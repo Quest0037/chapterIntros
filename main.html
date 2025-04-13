@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chapter Intros</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Georgia', serif;
+      background: #fefefe;
+      color: #111;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #1e1e1e;
+      color: #eee;
+    }
+
+    header {
+      padding: 0.25rem 0.5rem;
+      background: #fafafa;
+      border-bottom: 1px solid #ddd;
+    }
+
+    body.dark header {
+      background: #222;
+      border-color: #333;
+    }
+
+    #controls {
+      display: flex;
+      gap: 1rem;
+      margin: 0;
+      justify-content: flex-end;
+    }
+
+    #bottomControls {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 1rem 0;
+      padding: 1rem 2rem;
+    }
+
+    button {
+      padding: 0.25rem 0.5rem;
+      font-size: 1rem;
+    }
+
+    #chapter {
+      margin: auto;
+    }
+
+    #intro-screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: calc(100vh - 100px);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    #intro-screen h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    #intro-screen p {
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+
+    #text {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      padding: 2rem;
+    }
+
+    .chapter-intro-wrapper {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 40px);
+      overflow: hidden;
+    }
+
+    .chapter-border-bg {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-right: 0;
+    }
+
+    .chapter-intro-fullscreen {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100%;
+      text-align: center;
+      padding: 2rem;
+      background: none;
+    }
+
+    .chapter-intro-fullscreen h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .chapter-intro-fullscreen h3 {
+      font-size: 1.2rem;
+      font-weight: normal;
+      margin-bottom: 1.5rem;
+    }
+
+    .chapter-intro-fullscreen p {
+      font-size: 1.1rem;
+      font-style: italic;
+      line-height: 1.6;
+      max-width: 600px;
+      margin-bottom: 0.5rem;
+    }
+
+    .chapter-meta {
+      font-size: 0.9rem;
+      font-style: italic;
+      text-align: right;
+      width: 100%;
+      max-width: 600px;
+      opacity: 0.7;
+      margin-top: 0;
+      margin-bottom: 2rem;
+    }
+    .chapter-intro-fullscreen button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chapter-intro-fullscreen > * {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.5s forwards ease;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s forwards ease;
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+  </style>
+  <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div id="controls">
+      <button onclick="prevChapter()">Previous</button>
+      <button onclick="nextChapter()">Next</button>
+      <button onclick="toggleTheme()">Theme</button>
+    </div>
+  </header>
+
+  <main id="chapter">
+    <div id="intro-screen">
+      <h1>Chapter Intros Demo</h1>
+      <p>
+        This interactive reading demo shows how readers can explore chapters one at a time,
+        beginning with an animated intro screen and transitioning smoothly to content.
+      </p>
+      <button onclick="startDemo()">Start Demo</button>
+    </div>
+  </main>
+
+  <script>
+    let currentChapterIndex = 0;
+    let bookData = null;
+    let isAtIntro = true;
+
+    async function startDemo() {
+      // Remove intro screen
+      const chapterContainer = document.getElementById('chapter');
+      chapterContainer.innerHTML = ''; // clear intro screen
+
+      // Load book data if not already loaded
+      if (!bookData) {
+        const response = await fetch('./book.json');
+        bookData = await response.json();
+      }
+
+      currentChapterIndex = 0;
+      renderChapter(currentChapterIndex);
+    }
+
+    function renderChapter(index) {
+      const chapter = bookData.chapters[index];
+      const chapterContainer = document.getElementById('chapter');
+      const border = bookData.design?.borders;
+
+      window.scrollTo(0, 0);
+      isAtIntro = true;
+
+      let delay = 1;
+      const fadeItem = (tag, content, className = "") => {
+        if (!content) return "";
+        const delayStyle = `style="animation-delay: ${delay++}s;"`;
+        return `<${tag} class="${className}" ${delayStyle}>${content}</${tag}>`;
+      };
+
+      // Base layout without border yet
+      const titleHTML = fadeItem("h2", chapter.title);
+      const subtitleHTML = fadeItem("h3", chapter.subtitle);
+      const descriptionHTML = fadeItem("p", chapter.description);
+      const metaHTML = fadeItem("div", chapter.meta, "chapter-meta");
+      const buttonHTML = `<div style="animation-delay: ${delay++}s;"><button onclick="showText()">Get Started</button></div>`;
+
+      const introHTML = `
+        <div class="chapter-intro-wrapper">
+          <div id="chapter-border-animation" class="chapter-border-bg"></div>
+          <div class="chapter-intro-fullscreen">
+            ${titleHTML}
+            ${subtitleHTML}
+            ${descriptionHTML}
+            ${metaHTML}
+            ${buttonHTML}
+          </div>
+        </div>
+      `;
+
+      chapterContainer.innerHTML = introHTML;
+
+      // Dynamically fetch and inject SVG (if specified)
+      if (border) {
+        fetch(`design/borders/${border}.svg`)
+                .then(res => res.text())
+                .then(svgContent => {
+                  const borderContainer = document.getElementById('chapter-border-animation');
+                  borderContainer.innerHTML = svgContent;
+                })
+                .catch(err => {
+                  console.error("Failed to load SVG border:", err);
+                });
+      }
+    }
+
+
+    function showText() {
+      const chapter = bookData.chapters[currentChapterIndex];
+      const divider = bookData.design?.dividers;
+      const chapterContainer = document.getElementById('chapter');
+      const introWrapper = document.querySelector('.chapter-intro-wrapper');
+
+      isAtIntro = false;
+
+      introWrapper.classList.add('fade-out');
+
+      // Wait for fade-out to finish before injecting text
+      setTimeout(() => {
+        const isLastChapter = currentChapterIndex === bookData.chapters.length - 1;
+        const nextButton = isLastChapter
+                ? `<button onclick="finishDemo()">Finish</button>`
+                : `<button onclick="nextChapter()">Next</button>`;
+        const prevButton = currentChapterIndex > 0
+                ? `<button onclick="prevChapter()">Previous</button>`
+                : '';
+
+        const textHTML = `
+      <div id="text" class="fade-in">${chapter.text}</div>
+      <div id="bottomControls">
+        ${prevButton}
+        ${nextButton}
+      </div>
+    `;
+
+        chapterContainer.innerHTML = textHTML;
+      }, 500); // matches the fadeOut duration
+
+    }
+
+
+    function nextChapter() {
+      const textEl = document.getElementById('text');
+
+      if (textEl) {
+        textEl.classList.remove('fade-in');
+        textEl.classList.add('fade-out');
+
+        setTimeout(() => {
+          if (currentChapterIndex < bookData.chapters.length - 1) {
+            currentChapterIndex++;
+            renderChapter(currentChapterIndex);
+          } else {
+            finishDemo();
+          }
+        }, 500); // match fade-out duration
+      } else {
+        // fallback if no fade element exists
+        if (currentChapterIndex < bookData.chapters.length - 1) {
+          currentChapterIndex++;
+          renderChapter(currentChapterIndex);
+        } else {
+          finishDemo();
+        }
+      }
+    }
+
+    function prevChapter() {
+      const textEl = document.getElementById('text');
+
+      if (textEl) {
+        textEl.classList.remove('fade-in');
+        textEl.classList.add('fade-out');
+
+        setTimeout(() => {
+          if (currentChapterIndex > 0) {
+            currentChapterIndex--;
+            renderChapter(currentChapterIndex);
+          }
+        }, 500); // match fade-out duration
+      } else {
+        // fallback if no fade element exists
+        if (currentChapterIndex > 0) {
+          currentChapterIndex--;
+          renderChapter(currentChapterIndex);
+        }
+      }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+
+    function finishDemo() {
+      const chapterContainer = document.getElementById('chapter');
+      chapterContainer.innerHTML = `
+        <div id="intro-screen">
+            <h2>You've reached the end!</h2>
+            <p>Thank you for checking out this demo.</p>
+            <button onclick="restartDemo()">Restart</button>
+        </div>
+      `;
+      document.getElementById('status').textContent = 'Demo complete.';
+    }
+
+    function restartDemo() {
+      const chapterContainer = document.getElementById('chapter');
+
+      // Reset state
+      currentChapterIndex = 0;
+      isAtIntro = true;
+      bookData = null;
+
+      // Show the intro screen again
+      chapterContainer.innerHTML = `
+    <div id="intro-screen">
+      <h1>Chapter Intro Demo</h1>
+      <p>
+        This interactive reading demo shows how readers can explore chapters one at a time,
+        beginning with an animated intro screen and transitioning smoothly to content. This simple
+        concept offers a boost to the reading experience that eReaders can't currently offer.
+      </p>
+      <p>
+        If you're interested in the chapter intro borders look in <b>book.json</b> and change <b>design.borders</b>
+        to a different option.
+      </p>
+      <p>
+        Consider a marketplace where artists can design and license animated borders (and dividers) to authors for use
+        in your reading experience. You can take a commission on sales.
+      </p>
+      <button onclick="startDemo()">Start Demo</button>
+    </div>
+  `;
+    }
+
+    window.addEventListener('load', restartDemo);
+  </script>
+
+</body>
+</html>
